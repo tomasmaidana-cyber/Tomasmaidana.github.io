@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sopas de Letras NTICx</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to bottom, #ffb6c1, #fff0f5);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .logo {
+      width: 200px;
+      margin-top: 15px;
+    }
+
+    h1 {
+      font-size: 2em;
+      color: #cc0066;
+      margin: 10px;
+    }
+
+    .names {
+      margin: 5px;
+      font-weight: bold;
+      color: #e75480;
+    }
+
+    .intro {
+      margin: 10px;
+      font-size: 1.2em;
+      color: #aa336a;
+    }
+
+    input {
+      padding: 8px;
+      font-size: 1em;
+      margin: 10px;
+      border-radius: 5px;
+      border: 1px solid #e75480;
+    }
+
+    button {
+      background-color: #ff69b4;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 1em;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background-color: #e75480;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    #timer {
+      font-size: 1.5em;
+      font-weight: bold;
+      margin: 15px;
+      color: #cc0066;
+    }
+
+    .sopa {
+      display: grid;
+      grid-template-columns: repeat(14, 1fr);
+      gap: 2px;
+      max-width: 90vw;
+      margin: 15px auto;
+    }
+
+    .cell {
+      width: 22px;
+      height: 22px;
+      background: white;
+      border: 1px solid #ffb6c1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      font-size: 13px;
+      user-select: none;
+    }
+
+    .cell.selected {
+      background: #ffccf9;
+    }
+
+    .cell.found {
+      background: #ff80bf;
+      color: white;
+    }
+
+    @media (max-width: 600px) {
+      .cell {
+        width: 18px;
+        height: 18px;
+        font-size: 11px;
+      }
+    }
+
+    .sopa-title {
+      font-weight: bold;
+      margin: 10px 0;
+      color: #cc0066;
+    }
+
+    .words {
+      margin: 5px 0;
+      font-size: 0.9em;
+      color: #aa336a;
+    }
+
+    .words span.found {
+      text-decoration: line-through;
+      color: #ff1493;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Imagen portada -->
+  <img src="screenshot_20250912-102313.jpg" alt="Sopa de letras" class="logo">
+
+  <h1>Hola Juan Carlos</h1>
+  <div class="names">Tobias · Enzo · Sharon · Bianca</div>
+  <div class="intro">Ingresa tu nombre para iniciar el desafío:</div>
+  <input type="text" id="playerName" placeholder="Tu nombre aquí">
+  <button id="startBtn">Iniciar</button>
+
+  <div id="gameArea" class="hidden">
+    <div id="timer">00:00</div>
+    <div id="sopasContainer"></div>
+  </div>
+
+  <script>
+    const sopas = [
+      { palabras: ["INTERNET", "REDES", "DATOS", "APP", "WEB", "HTML", "CSS", "SOFTWARE"], },
+      { palabras: ["COMPUTADORA", "RED", "USUARIO", "VIRUS", "SEGURIDAD", "APP"], },
+      { palabras: ["HARDWARE", "SOFTWARE", "TECLADO", "MOUSE", "PANTALLA", "USB"], },
+      { palabras: ["SMARTPHONE", "CONEXION", "WIFI", "BLUETOOTH", "ANDROID"], },
+      { palabras: ["REDSOCIAL", "FACEBOOK", "INSTAGRAM", "TWITTER", "TIKTOK"], },
+      { palabras: ["INFORMACION", "PROCESAMIENTO", "SISTEMAS", "DATOS"], },
+      { palabras: ["CIENCIA", "INTERNET", "NUBE", "INTELIGENCIA", "ARTIFICIAL"], },
+      { palabras: ["COMUNICACION", "MENSAJE", "EMAIL", "MULTIMEDIA", "ONLINE"], },
+      { palabras: ["NAVEGADOR", "CHROME", "FIREFOX", "MICROSOFT", "SAFARI"], },
+      { palabras: ["TECNOLOGIA", "DIGITAL", "ARCHIVO", "SEGURIDAD", "REDES"], },
+    ];
+
+    const gridSize = 14;
+    let timerInterval;
+    let seconds = 0;
+    let isSelecting = false;
+    let selectedCells = [];
+
+    function startTimer() {
+      seconds = 0;
+      timerInterval = setInterval(() => {
+        seconds++;
+        let mins = String(Math.floor(seconds / 60)).padStart(2, '0');
+        let secs = String(seconds % 60).padStart(2, '0');
+        document.getElementById("timer").innerText = `${mins}:${secs}`;
+      }, 1000);
+    }
+
+    // Genera la matriz con palabras incluidas
+    function generateMatrix(palabras, size) {
+      let matrix = Array.from({ length: size }, () => Array(size).fill(""));
+
+      palabras.forEach(word => {
+        let placed = false;
+        while (!placed) {
+          let direction = Math.random() < 0.5 ? "H" : "V"; // horizontal o vertical
+          let row = Math.floor(Math.random() * size);
+          let col = Math.floor(Math.random() * size);
+
+          if (direction === "H" && col + word.length <= size) {
+            for (let i = 0; i < word.length; i++) {
+              if (matrix[row][col + i] !== "" && matrix[row][col + i] !== word[i]) {
+                placed = false;
+                break;
+              }
+              placed = true;
+            }
+            if (placed) {
+              for (let i = 0; i < word.length; i++) {
+                matrix[row][col + i] = word[i];
+              }
+            }
+          } else if (direction === "V" && row + word.length <= size) {
+            for (let i = 0; i < word.length; i++) {
+              if (matrix[row + i][col] !== "" && matrix[row + i][col] !== word[i]) {
+                placed = false;
+                break;
+              }
+              placed = true;
+            }
+            if (placed) {
+              for (let i = 0; i < word.length; i++) {
+                matrix[row + i][col] = word[i];
+              }
+            }
+          }
+        }
+      });
+
+      // Rellenar vacíos con letras aleatorias
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          if (matrix[r][c] === "") {
+            matrix[r][c] = String.fromCharCode(65 + Math.floor(Math.random() * 26));
+          }
+        }
+      }
+      return matrix;
+    }
+
+    function generateSopa(palabras) {
+      const sopaDiv = document.createElement("div");
+      sopaDiv.classList.add("sopa");
+
+      let matrix = generateMatrix(palabras, gridSize);
+
+      matrix.flat().forEach(letter => {
+        const div = document.createElement("div");
+        div.classList.add("cell");
+        div.textContent = letter;
+        sopaDiv.appendChild(div);
+      });
+
+      let wordList = document.createElement("div");
+      wordList.classList.add("words");
+      palabras.forEach(p => {
+        let span = document.createElement("span");
+        span.textContent = p + " ";
+        wordList.appendChild(span);
+      });
+
+      // selección con mouse
+      sopaDiv.addEventListener("mousedown", (e) => {
+        isSelecting = true;
+        selectCell(e.target);
+      });
+      sopaDiv.addEventListener("mouseover", (e) => {
+        if (isSelecting) selectCell(e.target);
+      });
+      document.addEventListener("mouseup", () => {
+        if (isSelecting) {
+          isSelecting = false;
+          checkSelection(palabras, wordList);
+        }
+      });
+
+      // selección con táctil
+      sopaDiv.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        isSelecting = true;
+        const touch = e.touches[0];
+        const target = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (target && target.classList.contains("cell")) {
+          selectCell(target);
+        }
+      });
+      sopaDiv.addEventListener("touchmove", (e) => {
+        e.preventDefault();
+        if (isSelecting) {
+          const touch = e.touches[0];
+          const target = document.elementFromPoint(touch.clientX, touch.clientY);
+          if (target && target.classList.contains("cell")) {
+            selectCell(target);
+          }
+        }
+      });
+      sopaDiv.addEventListener("touchend", () => {
+        if (isSelecting) {
+          isSelecting = false;
+          checkSelection(palabras, wordList);
+        }
+      });
+
+      return { sopaDiv, wordList };
+    }
+
+    function selectCell(cell) {
+      if (!cell.classList.contains("selected") && cell.classList.contains("cell")) {
+        cell.classList.add("selected");
+        selectedCells.push(cell);
+      }
+    }
+
+    function checkSelection(palabras, wordList) {
+      let word = selectedCells.map(c => c.textContent).join("");
+      let reversed = word.split("").reverse().join("");
+
+      let spans = wordList.querySelectorAll("span");
+      palabras.forEach((p, i) => {
+        if (word.includes(p) || reversed.includes(p)) {
+          selectedCells.forEach(c => {
+            c.classList.remove("selected");
+            c.classList.add("found");
+          });
+          spans[i].classList.add("found");
+        }
+      });
+
+      selectedCells.forEach(c => c.classList.remove("selected"));
+      selectedCells = [];
+    }
+
+    document.getElementById("startBtn").addEventListener("click", () => {
+      const player = document.getElementById("playerName").value.trim();
+      if (player === "") {
+        alert("Por favor, ingresa tu nombre antes de comenzar.");
+        return;
+      }
+      document.getElementById("gameArea").classList.remove("hidden");
+      document.getElementById("startBtn").classList.add("hidden");
+      document.getElementById("playerName").classList.add("hidden");
+      document.querySelector(".intro").classList.add("hidden");
+
+      const container = document.getElementById("sopasContainer");
+      container.innerHTML = "";
+
+      sopas.forEach((sopa, index) => {
+        const title = document.createElement("div");
+        title.classList.add("sopa-title");
+        title.textContent = `Sopa ${index + 1}`;
+        container.appendChild(title);
+
+        let { sopaDiv, wordList } = generateSopa(sopa.palabras);
+        container.appendChild(sopaDiv);
+        container.appendChild(wordList);
+      });
+
+      startTimer();
+    });
+  </script>
+
+</body>
+</html>
